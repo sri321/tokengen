@@ -12,6 +12,7 @@ import re
 from bs4 import BeautifulSoup
 from os.path import expanduser
 from urllib.parse import urlparse
+import lxml
 
 ##########################################################################
 # Variables
@@ -242,7 +243,7 @@ def getalltokens(awsroles):
         if i < len(awsroles):
             role_arn = awsroles[int(i)].split(',')[0]
             principal_arn = awsroles[int(i)].split(',')[1]
-            acctnum = awsroles[int(i)].split(',')[0].split(':')[4]
+            acctname = awsrole.split(',')[0].split(':')[4]+'-'+awsrole.split(',')[0].split(':')[5].split('/')[1]
             client = boto3.client('sts')
             token = client.assume_role_with_saml(RoleArn=role_arn, PrincipalArn=principal_arn, SAMLAssertion=assertion)
             # Write the AWS STS token into the AWS credential file
@@ -254,14 +255,14 @@ def getalltokens(awsroles):
 
             # Put the credentials into a saml specific section instead of clobbering
             # the default credentials
-            if not config.has_section(acctnum):
-                config.add_section(acctnum)
+            if not config.has_section(acctname):
+                config.add_section(acctname)
 
-            config.set(acctnum, 'output', outputformat)
-            config.set(acctnum, 'region', region)
-            config.set(acctnum, 'aws_access_key_id', access_key)
-            config.set(acctnum, 'aws_secret_access_key', secret_key)
-            config.set(acctnum, 'aws_session_token', session_token)
+            config.set(acctname, 'output', outputformat)
+            config.set(acctname, 'region', region)
+            config.set(acctname, 'aws_access_key_id', access_key)
+            config.set(acctname, 'aws_secret_access_key', secret_key)
+            config.set(acctname, 'aws_session_token', session_token)
             i = i+1
     #Write the updated config file
     with open(filename, 'w+') as configfile:
@@ -276,7 +277,7 @@ if len(awsroles) > 1:
     i = 0
     print ("Please choose the role you would like to assume:")
     for awsrole in awsroles:
-        print ('[', i+1, ']: ', awsrole.split(',')[0])
+        print ('[', i+1, ']: ',awsrole.split(',')[0].split(':')[4]+'-'+awsrole.split(',')[0].split(':')[5].split('/')[1])
         i += 1
     print ('[', i+1, ']: Default all accounts')
     print("")
@@ -288,18 +289,18 @@ if len(awsroles) > 1:
         print ('You selected an invalid role index, going default')
         selectedroleindex = len(awsroles)
 else:
-    print ("Only one role found:",awsrole.split(',')[0])
+    print ("Only one role found:",awsrole.split(',')[0].split(':')[4]+'-'+awsrole.split(',')[0].split(':')[5].split('/')[1])
     role_arn = awsroles[0].split(',')[0]
     principal_arn = awsroles[0].split(',')[1]
 
 ####################################################
 if selectedroleindex == len(awsroles):
     filename,expiration = getalltokens(awsroles)
-    acctnum = 'Multiple Accounts'
+    acctname = 'Multiple Accounts'
 else:
     role_arn = awsroles[int(selectedroleindex)].split(',')[0]
     principal_arn = awsroles[int(selectedroleindex)].split(',')[1]
-    acctnum = awsroles[int(selectedroleindex)].split(',')[0].split(':')[4]
+    acctname = awsroles[int(selectedroleindex)].split(',')[0].split(':')[4]+'-'+awsroles[int(selectedroleindex)].split(',')[0].split(':')[5].split('/')[1]
     # Use the assertion to get an AWS STS token using Assume Role with SAML
     client = boto3.client('sts')
     token = client.assume_role_with_saml(RoleArn=role_arn, PrincipalArn=principal_arn, SAMLAssertion=assertion)
@@ -320,21 +321,21 @@ else:
 
     # Put the credentials into a saml specific section instead of clobbering
     # the default credentials
-    if not config.has_section(acctnum):
-        config.add_section(acctnum)
+    if not config.has_section(acctname):
+        config.add_section(acctname)
 
-    config.set(acctnum, 'output', outputformat)
-    config.set(acctnum, 'region', region)
-    config.set(acctnum, 'aws_access_key_id', access_key)
-    config.set(acctnum, 'aws_secret_access_key', secret_key)
-    config.set(acctnum, 'aws_session_token', session_token)
+    config.set(acctname, 'output', outputformat)
+    config.set(acctname, 'region', region)
+    config.set(acctname, 'aws_access_key_id', access_key)
+    config.set(acctname, 'aws_secret_access_key', secret_key)
+    config.set(acctname, 'aws_session_token', session_token)
     #Write the updated config file
     with open(filename, 'w+') as configfile:
         config.write(configfile)
 
 # Give the user some basic info as to what has just happened
 print ('\n\n----------------------------------------------------------------')
-print ('Your new access key pair has been stored in the AWS configuration file {0} under the profile {1}.'.format(filename,acctnum))
+print ('Your new access key pair has been stored in the AWS configuration file {0} under the profile {1}.'.format(filename,acctname))
 print ('Note that it will expire at UTC {0}.'.format(expiration))
 print ('After this time, you may safely rerun this script to refresh your access key pair.')
 print ('To use this credential, call the AWS CLI with the --profile option (e.g. aws --profile default ec2 describe-instances).')
