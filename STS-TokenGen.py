@@ -1,18 +1,19 @@
 #!/usr/bin/python
 
-import sys
-import boto3
-import requests
-import getpass
-from configparser import ConfigParser
-import base64
-import logging
-import xml.etree.ElementTree as ET
 import re
+import os
+import sys
+import lxml
+import boto3
+import base64
+import getpass
+import logging
+import requests
 from bs4 import BeautifulSoup
 from os.path import expanduser
 from urllib.parse import urlparse
-import lxml
+import xml.etree.ElementTree as ET
+from configparser import ConfigParser
 
 ##########################################################################
 # Variables
@@ -47,6 +48,7 @@ username = str(input())
 password = getpass.getpass()
 print ('')
 
+######################
 ############# Verification Code ##########
 
 print ("MFA Verification Option choice")
@@ -182,12 +184,6 @@ payload3['AuthMethod'] = 'AzureMfaServerAuthentication'
 mfaresponse2 = session.post(
     mfaurl, data=payload3, verify=sslverification)
 
-# Overwrite and delete the credential variables,  for safety
-
-username = '##############################################'
-password = '##############################################'
-del username
-del password
 
 # # Decode the response and extract the SAML assertion
 
@@ -232,6 +228,21 @@ for awsrole in awsroles:
 home = expanduser("~")
 filename = home + awsconfigfile
 
+##### Set Proxy ######
+if "HTTPS_PROXY" in os.environ:
+    print ("Proxy has already been set")
+    print ("")
+else:
+    print("Setting Proxy")
+    os.environ["HTTP_PROXY"] = "http://username:password@corp-eq5-proxy.mhc:8080"
+    os.environ["HTTPS_PROXY"] = "https://username:password@corp-eq5-proxy.mhc:8080"
+# Overwrite and delete the credential variables,  for safety
+
+username = '##############################################'
+password = '##############################################'
+del username
+del password
+
 ########## get all accounts tokens ###########
 
 def getalltokens(awsroles):
@@ -270,7 +281,7 @@ def getalltokens(awsroles):
     return filename,expiration
 
 ##############################################
-# If I have more than one role, ask the user which one they want,
+# If user has more than one role, ask the user which one they want,
 # otherwise just proceed
 print ("")
 if len(awsroles) > 1:
@@ -290,8 +301,7 @@ if len(awsroles) > 1:
         selectedroleindex = len(awsroles)
 else:
     print ("Only one role found:",awsrole.split(',')[0].split(':')[4]+'-'+awsrole.split(',')[0].split(':')[5].split('/')[1])
-    role_arn = awsroles[0].split(',')[0]
-    principal_arn = awsroles[0].split(',')[1]
+    selectedroleindex = 0
 
 ####################################################
 if selectedroleindex == len(awsroles):
